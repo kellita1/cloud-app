@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Check-in</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 {
+            text-align: center;
+            color: #1a73e8;
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #1557b0;
+        }
+        #message {
+            margin-top: 1rem;
+            text-align: center;
+            min-height: 1.25rem;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .visitors-section {
+            margin-top: 2rem;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+        }
+        .visitor-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f9f9f9;
+            display: flex;
+            justify-content: space-between;
+        }
+        .visitor-time {
+            color: #666;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Event Check-in</h1>
+        
+        <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" placeholder="Enter your name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" placeholder="Enter your email" required>
+        </div>
+        
+        <button id="checkinBtn">Check In</button>
+        <div id="message"></div>
+
+        <div class="visitors-section">
+            <h2>Checked-in Visitors</h2>
+            <div id="visitorsList">
+                <!-- Visitors will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkinBtn = document.getElementById('checkinBtn');
+            const messageDiv = document.getElementById('message');
+            const visitorsList = document.getElementById('visitorsList');
+
+            // Load initial list
+            fetchVisitors();
+
+            checkinBtn.addEventListener('click', async () => {
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+
+                if (!name || !email) {
+                    showMessage('Please fill in all fields', 'error');
+                    return;
+                }
+
+                if (!email.includes('@')) {
+                    showMessage('Please enter a valid email', 'error');
+                    return;
+                }
+
+                try {
+                    checkinBtn.disabled = true;
+                    checkinBtn.textContent = 'Checking in...';
+
+                    const response = await fetch('/api/checkin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name, email })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Check-in failed');
+                    }
+
+                    showMessage('Check-in successful!', 'success');
+                    document.getElementById('name').value = '';
+                    document.getElementById('email').value = '';
+                    fetchVisitors(); // Refresh list
+
+                } catch (error) {
+                    showMessage(error.message, 'error');
+                } finally {
+                    checkinBtn.disabled = false;
+                    checkinBtn.textContent = 'Check In';
+                }
+            });
+
+            async function fetchVisitors() {
+                try {
+                    const response = await fetch('/api/checkins');
+                    if (!response.ok) throw new Error('Failed to load visitors');
+                    
+                    const visitors = await response.json();
+                    renderVisitors(visitors);
+                } catch (error) {
+                    console.error('Error fetching visitors:', error);
+                    visitorsList.innerHTML = '<p class="error">Could not load visitor list.</p>';
+                }
+            }
+
+            function renderVisitors(visitors) {
+                if (visitors.length === 0) {
+                    visitorsList.innerHTML = '<p>No visitors yet.</p>';
+                    return;
+                }
+
+                visitorsList.innerHTML = visitors.map(v => {
+                    const date = new Date(v.checkin_time).toLocaleString();
+                    // Escaping minimal HTML sequences to prevent basic injection
+                    const safeName = v.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    return `<div class="visitor-item">
+                        <span><strong>${safeName}</strong></span>
+                        <span class="visitor-time">${date}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            function showMessage(text, type) {
+                messageDiv.textContent = text;
+                messageDiv.className = type;
+                setTimeout(() => {
+                    messageDiv.textContent = '';
+                    messageDiv.className = '';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
