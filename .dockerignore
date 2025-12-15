@@ -1,0 +1,9 @@
+node_modules
+.git
+.gitignore
+*.log
+npm-debug.log
+docker-compose.yaml
+init.sql
+cloudbuild.yaml
+README.md
