@@ -99,4 +99,4 @@ On every push to `main`, Cloud Build will:
 
 ## License
 
-MIT
+under MIT license
